@@ -1,0 +1,95 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String     @id @default(cuid())
+  phone     String     @unique
+  name      String
+  role      String     @default("RIDER")
+  avatar    String?
+  rating    Float      @default(0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // Relationships
+  tripsAsDriver   Trip[]      @relation("driver")
+  bookings        Booking[]   @relation("rider")
+  reviewsGiven    Review[]    @relation("reviewer")
+  reviewsReceived Review[]    @relation("reviewee")
+
+  @@index([phone])
+}
+
+model Trip {
+  id              String    @id @default(cuid())
+  driverId        String
+  driver          User      @relation("driver", fields: [driverId], references: [id], onDelete: Cascade)
+  origin          String    // Start location
+  destination     String    // End location
+  originLat       Float     // For map display
+  originLng       Float
+  destLat         Float
+  destLng         Float
+  departureTime   DateTime
+  seatsAvailable  Int
+  seatsBooked     Int       @default(0)
+  pricePerSeat    Float
+  description     String?
+  status          String    @default("ACTIVE")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relationships
+  bookings        Booking[]
+
+  @@index([driverId])
+  @@index([departureTime])
+  @@index([status])
+}
+
+model Booking {
+  id          String     @id @default(cuid())
+  tripId      String
+  trip        Trip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  riderId     String
+  rider       User       @relation("rider", fields: [riderId], references: [id], onDelete: Cascade)
+  seatsBooked Int        @default(1)
+  status      String     @default("PENDING")
+  totalPrice  Float
+  paymentStatus String   @default("PENDING")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relationships
+  reviews     Review[]
+
+  @@unique([tripId, riderId])
+  @@index([riderId])
+  @@index([status])
+}
+
+model Review {
+  id          String    @id @default(cuid())
+  bookingId   String    @unique
+  booking     Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  reviewerId  String
+  reviewer    User      @relation("reviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+  revieweeId  String
+  reviewee    User      @relation("reviewee", fields: [revieweeId], references: [id], onDelete: Cascade)
+  rating      Int       // 1-5
+  comment     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([reviewerId])
+  @@index([revieweeId])
+}
